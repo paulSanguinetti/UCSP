@@ -2,27 +2,18 @@
 
 int main(void)
 {
-  int c;
-  int esp;
+  int c, ant;
 
-  esp = 0;
   while((c = getchar()) != EOF)
   {
     if(c == ' ')
     {
-      if(esp == 0)
-      {
-        esp = 1;
+      if(ant != ' ')
         putchar(c);
-      }
     }
-
-    if(c != ' ')
-    {
-      esp = 0;
+    else
       putchar(c);
-    }
+    ant=c;
   }
-
   return 0;
 }
