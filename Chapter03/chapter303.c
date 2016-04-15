@@ -1,13 +1,5 @@
 /*
- * Filename:    expand.c
- * Author:      Thomas van der Burgt <thomas@thvdburgt.nl>
- * Date:        24-FEB-2010
- *
- * The C Programming Language, second edition,
- * by Brian Kernighan and Dennis Ritchie
- *
- * Exercise 3-3, page 63
- *
+ * Author:      Thomas van der Burgt
  * Write a function expand(s1,s2) that expands shorthand notations like
  * a-z in the string s1 into the equivalent complete list abc...xyz in
  * s2. Allow for letters of either case and digits, and be prepared to

@@ -1,13 +1,4 @@
 /*
- * Filename:    escape.c
- * Author:      Thomas van der Burgt <thomas@thvdburgt.nl>
- * Date:        24-FEB-2010
- *
- * The C Programming Language, second edition,
- * by Brian Kernighan and Dennis Ritchie
- *
- * Exercise 3-2, page 60
- *
  * Write a function escape(s,t) that converts characters like newline
  * and tab into visible escape sequences like \n and \t as it copies the
  * string t to s. Use a switch. Write a function for the other direction
@@ -20,8 +11,6 @@
 #define TRUE  1
 #define FALSE 0
 
-/* escape:  converts newlines and tabs into visible escape sequenes as
-            it copies the string t into s */
 void escape(char s[], char t[])
 {
     int i, j;
@@ -44,8 +33,6 @@ void escape(char s[], char t[])
     s[j] = '\0';
 }
 
-/* unescape:  converts escape sequenes '\n' and '\t' into newlines and
-              tabs into as it copies the string t into s */
 void unescape(char s[], char t[])
 {
     int i, j;
