@@ -1,0 +1,1 @@
+El compilador castea 10.0 a un entero 10.
