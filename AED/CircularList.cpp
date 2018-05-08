@@ -20,9 +20,10 @@ struct CNode{
 };
 // +++++++++  CLASS LINKED LIST ++++++++++++++++++
 template <class T, class C>
-struct CLinkedList{
+class CLinkedList{
+public:
 	CLinkedList();
-	//~CLinkedList();
+	~CLinkedList();
 	bool find(T x, CNode<T> **&p);
 	bool insert(T x);
 	bool remove(T x);
@@ -37,6 +38,13 @@ struct CLinkedList{
 template <class T, class C>
 CLinkedList<T, C>::CLinkedList(){
 	m_Head = 0;
+};
+template <class T, class C>
+CLinkedList<T, C>::~CLinkedList(){
+	while(m_Head){
+		CNode<T> **p;
+		remove(m_Head->m_Data);
+	}
 };
 template <class T, class C>
 bool CLinkedList<T, C>::is_empty(){
@@ -146,6 +154,7 @@ int main(int argc, char const *argv[])
 			cout << "\n 0 para volver, BORRAR el numero: ";
 			cin >> n;
 			test.remove(n);
+			//test.~CLinkedList();
 			test.print();
 		}else if(option==3){
 			cout << "\nLista circular en REVERSA" << endl;
