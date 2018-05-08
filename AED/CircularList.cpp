@@ -23,14 +23,14 @@ template <class T, class C>
 struct CLinkedList{
 	CLinkedList();
 	//~CLinkedList();
-	bool find(T x, CNode<T> *&p);
+	bool find(T x, CNode<T> **&p);
 	bool insert(T x);
 	bool remove(T x);
 	bool is_empty();
 	void print();
+	void print_reversed();
 
 	CNode<T> *m_Head;
-	CNode<T> *m_Tail;
 	C m_cmp;
 };
 
@@ -44,84 +44,115 @@ bool CLinkedList<T, C>::is_empty(){
 };
 
 template <class T, class C>
-bool CLinkedList<T, C>::find(T x, CNode<T> *&p){
-	int lim=0;
-	for(p=m_Head; p->m_Next!=m_Head && m_cmp(p->m_Next->m_Data, x) && lim < 7; p=p->m_Next, lim++)
-	//cout << " good : " << p <<endl;
-		;
-	return !!p && p->m_Data==x;
+bool CLinkedList<T, C>::find(T x, CNode<T> **&p){
+	for(p=&m_Head; (*p)->m_Next != m_Head && m_cmp((*p)->m_Data, x); p=&(*p)->m_Next);
+	if((*p)->m_Next == m_Head && m_cmp((*p)->m_Data, x))
+		p=&(*p)->m_Next;
+	return (*p)->m_Data == x;
 };
+
 
 template <class T, class C>
 bool CLinkedList<T, C>::insert(T x){
-	CNode<T> *p, *t;
-	if(is_empty()){
-		m_Head = m_Tail = new CNode<T>(x);
-		return 1;
-	}else if(m_cmp(x,m_Head->m_Data)){
+	if(!m_Head){
 		m_Head = new CNode<T>(x);
-		m_Head->m_Next = m_Tail;
-		m_Head->m_Prev = m_Tail;
-		m_Tail->m_Prev = m_Head;
-		m_Tail->m_Next = m_Head;
 		return 1;
 	}
-	if(find(x, p)){
+	CNode<T> **p, *q;
+	if(find(x, p))
 		return 0;
-	}if (p == m_Tail){
-		t = new CNode<T>(x);
-		t->m_Next = p->m_Next;
-		t->m_Prev = p;
-		p->m_Next->m_Prev = t;
-		p->m_Next = t;
-		m_Tail = t;
-	}
-	t = new CNode<T>(x);
-	t->m_Next = p->m_Next;
-	t->m_Prev = p;
-	p->m_Next = t;
-	p->m_Next->m_Prev = t;
+	q = new CNode<T>(x);
+	q->m_Prev = (*p)->m_Prev;
+	q->m_Next = *p;
+	if(p == &m_Head)
+		(*p)->m_Prev->m_Next = q;
+	(*p)->m_Prev = q;
+	*p = q;
 	return 1;
 };
 
 template <class T, class C>
 bool CLinkedList<T, C>::remove(T x){
-	CNode<T> **p;
-	if(!find(x, p))
-		return 0;
-	*p = (*p)->m_Next;
-	return 1;
+	CNode<T> **p, *q;
+	if(m_Head && find(x, p)){
+		q = *p;
+		if(m_Head->m_Next == m_Head){
+			m_Head = 0;
+			delete q;
+			return 1;
+		}
+		(*p)->m_Next->m_Prev = (*p)->m_Prev;
+		(*p)->m_Prev->m_Next = (*p)->m_Next;
+		if(p == &m_Head)
+			*p = (*p)->m_Next;
+			//*p == (*p)->m_Next;
+		q = 0;
+		delete q;
+		return 1;
+	}
+	return 0;
 };
 
 template <class T, class C>
 void CLinkedList<T, C>::print(){
-	CNode<T> *p, *q;
-	q=m_Head;
-	int i=0;
-	for(p=m_Head ; i<5; p=(p->m_Prev), i++)
-		cout << i+1 <<"   th: " << p << "  dir " <<  p->m_Data << endl;
-	if(!i)
+	CNode<T> *p;
+	if (!m_Head){
 		cout << "empty list." << endl;
+		return;
+	}
+	int i=0;
+	for(p=m_Head ; p->m_Next != m_Head; p=(p->m_Next), i++)
+		cout << i+1 <<" th: " << p << " dir :: " <<  p->m_Data << endl;
+	cout << i+1 <<" th: " << p << " dir :: " <<  p->m_Data << endl;
+	return;
+};
+template <class T, class C>
+void CLinkedList<T, C>::print_reversed(){
+	CNode<T> *p;
+	if (!m_Head){
+		cout << "empty list." << endl;
+		return;
+	}
+	int i=0;
+	for(p=m_Head->m_Prev; p->m_Prev != m_Head->m_Prev; p=(p->m_Prev), i++)
+		cout << i+1 <<" th: " << p << " dir :: " <<  p->m_Data << endl;
+	cout << i+1 <<" th: " << p << " dir :: " <<  p->m_Data << endl;
 	return;
 };
 
-
 int main(int argc, char const *argv[])
 {
-	CLinkedList<int, CLess<int>> testL;
-	testL.insert(3);
-	
-	testL.insert(1);
-	testL.insert(8);
-	testL.insert(9);
-	//testL.insert(10);
-	//testL.insert(9);
-	//testL.insert(8);
-//	testL.insert(6);
-	//testL.insert(5);
-	//testL.insert(8);
-	//testL.remove(5);
-	//testL.remove(10);
-	testL.print();
+	CLinkedList<int, CLess<int>> test;
+	int option, n;
+	while(true){
+		cout << " |++++++++ Binary Tree +++++++++| " <<endl;
+		cout << " |+++++Press (1) to Insert +++++| " <<endl;
+		cout << " |+++++Press (2) to Remove +++++| " <<endl;
+		cout << " |++Press (3) to PrintReverse ++| " <<endl;
+		cout << " |+++++Press (0) to Quit +++++++| " <<endl;
+		cout << " |++++++++++++++++++++++++++++++| " <<endl;
+		cout << "  * option: " ;
+		cin>>option;
+		if(option==1){
+			while(true){
+			cout << "\n 0 para volver, ingrese un numero: " ;
+			cin >> n;
+			if(n==0)
+				break;
+			test.insert(n);
+			test.print();
+			}
+		}else if(option==2){
+			cout << "\n 0 para volver, BORRAR el numero: ";
+			cin >> n;
+			test.remove(n);
+			test.print();
+		}else if(option==3){
+			cout << "\nLista circular en REVERSA" << endl;
+			test.print_reversed();
+		}else if(option==0)
+			break;
+	}
+
 	return 0;
 };
