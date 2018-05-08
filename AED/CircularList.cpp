@@ -41,10 +41,8 @@ CLinkedList<T, C>::CLinkedList(){
 };
 template <class T, class C>
 CLinkedList<T, C>::~CLinkedList(){
-	while(m_Head){
-		CNode<T> **p;
+	while(m_Head)
 		remove(m_Head->m_Data);
-	}
 };
 template <class T, class C>
 bool CLinkedList<T, C>::is_empty(){
