@@ -202,7 +202,7 @@ Ocho_locos<T, C>::Ocho_locos(int n_players){
 	players = new Player<T,C>[n_players];
 	//repartiendo  8  cartas a los players
 	for (int i = 0; i < n_players; ++i)
-		for (int j = 0; j < 3; ++j)
+		for (int j = 0; j < 8; ++j)
 			Alzar_carta(players[i]);
 	//agregando una carta al mazo de descarte
 	while(Mazo.m_Head->m_num == 8){
@@ -268,9 +268,10 @@ void Ocho_locos<T, C>::print_face_up(){
 };
 // +++++++++++++++++++++++++++++++++    CLASS GAME 8 LOCOS  ++++++++++++++++++++++++++++++
 int main(int argc, char const *argv[]){
-	CLinkedList<int, CCards<int>> test;
-	test.insert(1,1);
 	int num_players=3, turn = 0, target = 1;
+	cout << "ingrese numero de jugadores: ";
+	cin >> num_players;
+	num_players = num_players%4;
 
 	Ocho_locos<int, CCards<int>> game(num_players);
 	while(!game.Mazo.is_empty()){
