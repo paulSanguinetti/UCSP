@@ -6,17 +6,18 @@
 #include <chrono>
 #include <vector>
 #include <map>
-
 using namespace std;
 
 #define ROW_SIZE 32
 #define BUFFER_SIZE 32
+const int COL_SIZES[4][2] = {{0,8}, {8, 11}, {19, 11}, {30, 2}}; //, {8, 11, 11, 2}
 
-
-// *********  Timing ******** //
-const int COL_SIZES[4][2] = {{0,8}, {8, 11}, {19, 11}, {30, 2}};
-//, {8, 11, 11, 2}
-
+string zeroes(string s, int dig){
+	int how = dig-s.size();
+	for(int i=0; i<how; i++)
+		s.insert(0,"0");
+	return s;
+};
 int pos_col(string str){
 	if(str == "id") return 0;
 	else if(str == "nombre") return 1;
@@ -27,9 +28,6 @@ int pos_col(string str){
 string print_row(string str){
 	return str = " | " + str.substr(COL_SIZES[0][0],COL_SIZES[0][1]) + " | " + str.substr(COL_SIZES[1][0],COL_SIZES[1][1]) + " | " + str.substr(COL_SIZES[2][0],COL_SIZES[2][1]) + " | " + str.substr(COL_SIZES[3][0],COL_SIZES[3][1]) + " | " ;
 };
-
-
-
 // *********    DB    ******* //
 class DBmanager{
 public:
@@ -37,16 +35,14 @@ public:
     vector<string> tokenizer(string);
     map<int, vector<int>> myMap[2]; // 0 : id | 1 : edad
     bool classifier(vector<string>);
-    //vector<string> sql_tokens;
     void a_ram(string table, string column);
     void create_table(string table_name, string col1, string col2, string col3, string col4);
-    void create_index(string column, string table_name);
+    void create_index(string table_name);
     void select(string table, string column, string value);
     void select_ts(string table, string column, string value);
     void insert(string table, string value1, string value2, string value3, string value4);
     void delete_rows(string table, string column, string value);
     void update(string table, string set_col, string set_value, string col_condition, string value_condition);
-
 };
 vector<string> DBmanager::tokenizer(string sql_sentence){
     vector<string> tokens;
@@ -76,13 +72,10 @@ void DBmanager::a_ram(string table, string column){
     
     FILE *fpSourceFile = fopen(table.c_str(), "rb");
     if (fpSourceFile==NULL) perror ("Error opening file");
-    
     int key_size;
-    if (pos_col(column)%2 == 0)	key_size = 8;  // para id
+    if (pos_col(column)%2 == 0)	key_size = 8;  // para id, sino edad
     else key_size = 2;
-
     char buffer[8+key_size];
-
     while(fread(&buffer, 1, sizeof(buffer), fpSourceFile) == sizeof(buffer))
     	myMap[pos_col(column)%2][stoi(string(buffer).substr(0, key_size))].push_back(stoi(string(buffer).substr(key_size,8)));
     
@@ -93,21 +86,28 @@ void DBmanager::a_ram(string table, string column){
 void DBmanager::create_table(string table_name, string col1, string col2, string col3, string col4){
 
 };
-void DBmanager::create_index(string column, string table_name){
-    
+void DBmanager::create_index(string table){
+	string tb_idx_age = "idx_age_" + table;
+	string tb_idx_name = "idx_name_" + table;
+	FILE *fpSourceFile = fopen(table.c_str(), "rb");
+	FILE *fpTargetFile = fopen(tb_idx_age.c_str(), "wb");
+	FILE *fpTargetFile2 = fopen(tb_idx_name.c_str(), "wb");
+	if (fpSourceFile==NULL) perror ("Error opening file");
+	char buffer[32];
+	for(int i=0;fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE;i++){
+		string idx_age = string(buffer).substr(COL_SIZES[3][0],COL_SIZES[3][1]) + zeroes(to_string(i),8);
+		string idx_name = string(buffer).substr(COL_SIZES[0][0],COL_SIZES[0][1]) + zeroes(to_string(i),8);
+		fwrite(&idx_age[0], 1, idx_age.length(), fpTargetFile);
+		fwrite(&idx_name[0], 1, idx_name.length(), fpTargetFile2);
+	}
 };
 void DBmanager::select_ts(string table, string column, string value){
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<string> v;
-    
-    /*for(auto u in Adj[u]){
-        if(*p == value_condition)
-            my_stack.push(u);
-    }*/
+    //cout << " ------------- "<<table<< endl;
     FILE *fpSourceFile = fopen(table.c_str(), "rb");
-    if (fpSourceFile==NULL) perror ("Error opening file");
+    if (fpSourceFile==NULL) perror ("Error opening file on select_ts");
     char buffer[32]; //tam de la fila
-
     while (fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
 		if (string(buffer).substr(COL_SIZES[pos_col(column)][0],COL_SIZES[pos_col(column)][1]) == value)
 			v.push_back(string(buffer));
@@ -129,25 +129,13 @@ void DBmanager::select(string table, string column, string value){
     FILE *fpSourceFile = fopen(table.c_str(), "rb");
     if (fpSourceFile==NULL) perror ("Error opening file");
     char buffer[32];
-    //int size = myMap[pos_col(column)%2][stoi(value)].size();
-    cout <<  pos_col(column)%2 << " helou "<<endl;
-    //error de map.find()
-/*
-    std::map<int,vector<int>>::iterator it;
-    it = myMap[pos_col(column)%2].find(stoi(value));
-    if (it != myMap[pos_col(column)%2].end()){
-    	myMap[pos_col(column)%2].erase(it);
-    	cout << "...No se encontro ese registro..." << endl;
-    }else { 
-    */
-    	int size = myMap[pos_col(column)%2][stoi(value)].size();
-    	if (size == 0)	cout << "...No se encontro ese registro..." << endl; // solucion error map.find() ?
-    	for (int i = 0; i < size; ++i){
-    	 	fseek(fpSourceFile, (BUFFER_SIZE * myMap[pos_col(column)%2][stoi(value)][i]), SEEK_SET);
-    		if(fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
-    			cout <<"Reg #" <<i+1 <<": " << print_row(string(buffer)) <<endl;
-    	}
-//    }
+	int size = myMap[pos_col(column)%2][stoi(value)].size();
+	if (size == 0)	cout << "...No se encontro ese registro..." << endl; // solucion error map.find() ?
+	for (int i = 0; i < size; ++i){
+	 	fseek(fpSourceFile, (BUFFER_SIZE * myMap[pos_col(column)%2][stoi(value)][i]), SEEK_SET);
+		if(fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
+			cout <<"Reg #" <<i+1 <<": " << print_row(string(buffer)) <<endl;
+	}
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     std::cout << "Elapsed time: " << elapsed.count() << " s\n";
@@ -158,7 +146,7 @@ void DBmanager::insert(string table_file, string value1, string value2, string v
 	FILE *fpSourceFile = fopen(table_file.c_str(), "rb");
 	FILE *fpTargetFile = fopen(temp_file.c_str(), "wb");
 
-	string new_row = value1 + value2 + value3 + value4; // fix values
+	string new_row = value1 + value2 + value3 + value4; // need tp fix values
 	char * cstr = new char [new_row.length()+1];
 	strcpy (cstr, new_row.c_str());
 	int last_buffer;
@@ -173,16 +161,15 @@ void DBmanager::insert(string table_file, string value1, string value2, string v
 	while( fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
 		fwrite(&buffer, 1, BUFFER_SIZE, fpTargetFile);
 
-	//anadir a la estructura, ejemplo map
-	/*
-	map<int, vector<int>> myMap;
-	for (int i = 0; i < 100; ++i)
-	{
-		myMap[i].push_back(i+1000);
-		cout << myMap[i][0] << endl;
-	}
-	*/
-	//
+	//anadir a la estructura
+	create_index(table_file);
+	string tb_idx_age = "idx_age_" + table_file;
+	string tb_idx_name = "idx_name_" + table_file;
+	myMap[0].clear();
+	myMap[1].clear();
+	a_ram(tb_idx_age, "id");
+    a_ram(tb_idx_name, "edad");
+	
 	// Close The Files
 	fclose(fpSourceFile);
 	fclose(fpTargetFile);
@@ -194,48 +181,32 @@ void DBmanager::insert(string table_file, string value1, string value2, string v
 void DBmanager::delete_rows(string table, string column_condition, string value_condition){
 
 };
-
 //UPDATE COMPANY SET SALARY = 15000 WHERE ID = 3;
 void DBmanager::update(string table, string column, string new_value, string column_condition, string value_condition){
 
 };
-
-
 // =================   MAIN   ====================
 int main(int argc, char const *argv[]){
 
     //string message = "select * from tb_alumno where id=85454 using idx.txt";
     //string message = "create_table Alumno(id, nombre, apellido, edad)";
-    //string message = "insert prueba10M.txt 10000000 alu10000000 ape10000000 99";
-    
-
-
-    string message = "select_ts from prueba.txt where edad=00";
-    
-    string message2 = "select from prueba.txt where edad=00";
-
+    //string message = "insert dat1M.txt 10000000 alu10000000 ape10000000 99";
+    string message3 = "select_ts from dat1M.txt where id=10000000";
+    string message2 = "select from dat1M.txt where id=10000000";
+	//auto start, finish;
+    std::chrono::duration<double> elapsed;
     DBmanager db;
-    
-    auto start = std::chrono::high_resolution_clock::now();
-    db.a_ram("name_idx.txt", "id");
-    db.a_ram("edad_idx.txt", "edad");
-    db.classifier(db.tokenizer(message));
-    db.classifier(db.tokenizer(message2));
-    
-    auto finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = finish - start;
-    std::cout << "Total time: " << elapsed.count() << " s\n";
+    string input = "";
+    while(true){
+    	cout << "  >>>";
+    	getline(cin, input);
+	    auto start = std::chrono::high_resolution_clock::now();
+	    db.classifier(db.tokenizer(input));
+	    auto finish = std::chrono::high_resolution_clock::now();
+	    std::chrono::duration<double> elapsed = finish - start;
+	    std::cout << "Total time: " << elapsed.count() << " s\n\n";
+    }
+
 
     return 0;
 };
-
-
-/*
-10 000 000		8
-alu12345678		11
-ape12345678		11
-ape99999999
-99				2
-
-
-*/
