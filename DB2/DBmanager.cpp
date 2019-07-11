@@ -6,6 +6,7 @@
 #include <chrono>
 #include <vector>
 #include <map>
+
 using namespace std;
 
 #define ROW_SIZE 32
@@ -34,12 +35,13 @@ class DBmanager{
 public:
     DBmanager(){};
     vector<string> tokenizer(string);
+    map<int, vector<int>> myMap[2]; // 0 : id | 1 : edad
     bool classifier(vector<string>);
     //vector<string> sql_tokens;
-    void a_ram(vector<string> columns, string table, string condition);
+    void a_ram(string table, string column);
     void create_table(string table_name, string col1, string col2, string col3, string col4);
     void create_index(string column, string table_name);
-    void select(string table, string column, string value, string idx);
+    void select(string table, string column, string value);
     void select_ts(string table, string column, string value);
     void insert(string table, string value1, string value2, string value3, string value4);
     void delete_rows(string table, string column, string value);
@@ -53,7 +55,7 @@ vector<string> DBmanager::tokenizer(string sql_sentence){
 };
 bool DBmanager::classifier(vector<string> sql_tokens){
     if(boost::to_lower_copy(sql_tokens[0]) == "select"){
-        select(sql_tokens[2], sql_tokens[4], sql_tokens[5], sql_tokens[7]); return 1;
+        select(sql_tokens[2], sql_tokens[4], sql_tokens[5]); return 1;
     }else if(boost::to_lower_copy(sql_tokens[0]) == "select_ts"){
         select_ts(sql_tokens[2], sql_tokens[4], sql_tokens[5]); return 1;
     }else if(boost::to_lower_copy(sql_tokens[0]) == "insert"){
@@ -64,23 +66,35 @@ bool DBmanager::classifier(vector<string> sql_tokens){
         delete_rows(sql_tokens[1], sql_tokens[4], sql_tokens[5]); return 1;
     }else if(boost::to_lower_copy(sql_tokens[0]) == "create_table"){
         create_table(sql_tokens[1], sql_tokens[2], sql_tokens[3], sql_tokens[4], sql_tokens[5]); return 1;
+    }else if(boost::to_lower_copy(sql_tokens[0]) == "a_ram"){
+        a_ram(sql_tokens[1], sql_tokens[2]); return 1;
     }else
         return 0;
 };
-void DBmanager::a_ram(vector<string> columns, string table, string condition){
+void DBmanager::a_ram(string table, string column){
+	auto start = std::chrono::high_resolution_clock::now();
+    
+    FILE *fpSourceFile = fopen(table.c_str(), "rb");
+    if (fpSourceFile==NULL) perror ("Error opening file");
+    
+    int key_size;
+    if (pos_col(column)%2 == 0)	key_size = 8;  // para id
+    else key_size = 2;
 
-    //charge a tree to ram
+    char buffer[8+key_size];
 
+    while(fread(&buffer, 1, sizeof(buffer), fpSourceFile) == sizeof(buffer))
+    	myMap[pos_col(column)%2][stoi(string(buffer).substr(0, key_size))].push_back(stoi(string(buffer).substr(key_size,8)));
+    
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    std::cout << "Ram Elapsed time: " << elapsed.count() << " s\n";
 };
 void DBmanager::create_table(string table_name, string col1, string col2, string col3, string col4){
-    FILE* fptr;
-    const string filename = table_name + ".bin";
-    fptr = fopen(filename.c_str(), "wb+");
-    fclose(fptr);
-    cout << "tabla creada " + filename <<endl;
+
 };
 void DBmanager::create_index(string column, string table_name){
-    //create a indexed tree on disk
+    
 };
 void DBmanager::select_ts(string table, string column, string value){
     auto start = std::chrono::high_resolution_clock::now();
@@ -93,33 +107,52 @@ void DBmanager::select_ts(string table, string column, string value){
     FILE *fpSourceFile = fopen(table.c_str(), "rb");
     if (fpSourceFile==NULL) perror ("Error opening file");
     char buffer[32]; //tam de la fila
-    //fread(buffer, 1, 32, fpSourceFile);
-    //cout << " fila:: "  << endl;
 
-    while (fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE){
-		//cout << " fila::::   "<<string(buffer) << endl;
-		if (string(buffer).substr(COL_SIZES[pos_col(column)][0],COL_SIZES[pos_col(column)][1]) == value){
+    while (fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
+		if (string(buffer).substr(COL_SIZES[pos_col(column)][0],COL_SIZES[pos_col(column)][1]) == value)
 			v.push_back(string(buffer));
-		}
-	}
-	for (int i = 0; i < v.size(); ++i){
+
+	//anadir encabezado
+	for (int i = 0; i < v.size(); ++i)
 		cout <<"Reg #" <<i+1 <<": " << print_row(v[i]) << endl;
-	}
+	
 	if (v.size()==0)
 		cout << "...No se encontro ese registro..." << endl;
 
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
+    std::cout << "table scanning Elapsed time: " << elapsed.count() << " s\n";
+};
+void DBmanager::select(string table, string column, string value){
+	auto start = std::chrono::high_resolution_clock::now();
+    
+    FILE *fpSourceFile = fopen(table.c_str(), "rb");
+    if (fpSourceFile==NULL) perror ("Error opening file");
+    char buffer[32];
+    //int size = myMap[pos_col(column)%2][stoi(value)].size();
+    cout <<  pos_col(column)%2 << " helou "<<endl;
+    //error de map.find()
+/*
+    std::map<int,vector<int>>::iterator it;
+    it = myMap[pos_col(column)%2].find(stoi(value));
+    if (it != myMap[pos_col(column)%2].end()){
+    	myMap[pos_col(column)%2].erase(it);
+    	cout << "...No se encontro ese registro..." << endl;
+    }else { 
+    */
+    	int size = myMap[pos_col(column)%2][stoi(value)].size();
+    	if (size == 0)	cout << "...No se encontro ese registro..." << endl; // solucion error map.find() ?
+    	for (int i = 0; i < size; ++i){
+    	 	fseek(fpSourceFile, (BUFFER_SIZE * myMap[pos_col(column)%2][stoi(value)][i]), SEEK_SET);
+    		if(fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
+    			cout <<"Reg #" <<i+1 <<": " << print_row(string(buffer)) <<endl;
+    	}
+//    }
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
     std::cout << "Elapsed time: " << elapsed.count() << " s\n";
 };
-void DBmanager::select(string table, string column, string value, string idx){
-
-};
 void DBmanager::insert(string table_file, string value1, string value2, string value3, string value4){
-	
-	//fseek(myFile, (register_size * row_size), SEEK_SET);
-	//fputs ( " sam" , pFile );
-	
 	char buffer[ROW_SIZE]; //tam de la fila
 	string temp_file = "c" + table_file;
 	FILE *fpSourceFile = fopen(table_file.c_str(), "rb");
@@ -175,13 +208,19 @@ int main(int argc, char const *argv[]){
     //string message = "create_table Alumno(id, nombre, apellido, edad)";
     //string message = "insert prueba10M.txt 10000000 alu10000000 ape10000000 99";
     
-    string message = "select_ts from prueba10M.txt where id=10000000";
+
+
+    string message = "select_ts from prueba.txt where edad=00";
+    
+    string message2 = "select from prueba.txt where edad=00";
 
     DBmanager db;
     
     auto start = std::chrono::high_resolution_clock::now();
-    
+    db.a_ram("name_idx.txt", "id");
+    db.a_ram("edad_idx.txt", "edad");
     db.classifier(db.tokenizer(message));
+    db.classifier(db.tokenizer(message2));
     
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
