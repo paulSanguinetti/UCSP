@@ -210,3 +210,5 @@ int main(int argc, char const *argv[]){
 
     return 0;
 };
+
+//g++ -o3 -pthread sqlito.cpp -o e -std=c++17 -lntl -lgmp -lm -ggdb
