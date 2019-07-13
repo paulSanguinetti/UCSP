@@ -36,7 +36,7 @@ public:
     map<int, vector<int>> myMap[2]; // 0 : id | 1 : edad
     bool classifier(vector<string>);
     void a_ram(string table, string column);
-    void create_table(string table_name, string col1, string col2, string col3, string col4);
+    void create_table(string table_name, string max);
     void create_index(string table_name);
     void select(string table, string column, string value);
     void select_ts(string table, string column, string value);
@@ -61,12 +61,11 @@ bool DBmanager::classifier(vector<string> sql_tokens){
     }else if(boost::to_lower_copy(sql_tokens[0]) == "delete"){
         delete_rows(sql_tokens[2], sql_tokens[4], sql_tokens[5]); return 1;
     }else if(boost::to_lower_copy(sql_tokens[0]) == "create_table"){
-        create_table(sql_tokens[1], sql_tokens[2], sql_tokens[3], sql_tokens[4], sql_tokens[5]); return 1;
+        create_table(sql_tokens[1], sql_tokens[2]); return 1;
     }else if(boost::to_lower_copy(sql_tokens[0]) == "a_ram"){
         a_ram(sql_tokens[1], sql_tokens[2]); return 1;
-    }else
-    	cout << " >> syntax error <<"<< endl;
-        return 0;
+    }else cout << " >> syntax error <<"<< endl;
+    return 0;
 };
 void DBmanager::a_ram(string table, string column){
 	auto start = std::chrono::high_resolution_clock::now();
@@ -83,8 +82,14 @@ void DBmanager::a_ram(string table, string column){
     std::chrono::duration<double> elapsed = finish - start;
     std::cout << "Ram Elapsed time: " << elapsed.count() << " s\n";
 };
-void DBmanager::create_table(string table_name, string col1, string col2, string col3, string col4){
-
+void DBmanager::create_table(string table_name, string max){
+	string str;
+	FILE *fpTargetFile = fopen(table_name.c_str(), "wb");
+	for (int i = 0; i < stoi(max); ++i){
+		str = zeroes(to_string(i),8) + "alu" + zeroes(to_string(i),8) + "ape" + zeroes(to_string(i),8) + zeroes(to_string(int(rand()%100)),2);
+		fwrite(&str[0], 1, str.length(), fpTargetFile);
+	}
+	fclose(fpTargetFile);
 };
 void DBmanager::create_index(string table){
 	string tb_idx_age = "idx_age_" + table;
@@ -114,10 +119,11 @@ void DBmanager::select_ts(string table, string column, string value){
 		if (string(buffer).substr(COL_SIZES[pos_col(column)][0],COL_SIZES[pos_col(column)][1]) == value)
 			v.push_back(string(buffer));
 
-	//anadir encabezado
+	cout << "---------------------------------------------"<< endl;
+	cout << "|    ID    |   NOMBRE    |  APELLIDO   |EDAD|" << endl;
 	for (int i = 0; i < v.size(); ++i)
 		cout <<"Reg #" <<i+1 <<": " << print_row(v[i]) << endl;
-	
+	cout << "---------------------------------------------"<< endl;
 	if (v.size()==0)
 		cout << "...No se encontro ese registro..." << endl;
 
@@ -133,11 +139,14 @@ void DBmanager::select(string table, string column, string value){
     char buffer[32];
 	int size = myMap[pos_col(column)%2][stoi(value)].size();
 	if (size == 0)	cout << "...No se encontro ese registro..." << endl;
+	cout << "---------------------------------------------"<< endl;
+	cout << "|    ID    |   NOMBRE    |  APELLIDO   |EDAD|" << endl;
 	for (int i = 0; i < size; ++i){
 	 	fseek(fpSourceFile, (BUFFER_SIZE * myMap[pos_col(column)%2][stoi(value)][i]), SEEK_SET);
 		if(fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
 			cout <<"Reg #" <<i+1 <<": " << print_row(string(buffer)) <<endl;
 	}
+	cout << "---------------------------------------------"<< endl;
 	fclose(fpSourceFile);
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
@@ -154,32 +163,28 @@ void DBmanager::insert(string table_file, string value1, string value2, string v
 	strcpy (cstr, new_row.c_str());
 	int last_buffer;
 	
-	while ((last_buffer = fread(&buffer, 1, BUFFER_SIZE, fpSourceFile)) == BUFFER_SIZE && stoi(string(buffer).substr(0,8)) <= stoi(value1)){
+	while ((last_buffer = fread(&buffer, 1, BUFFER_SIZE, fpSourceFile)) == BUFFER_SIZE && stoi(string(buffer).substr(0,8)) <= stoi(value1))
 		fwrite(&buffer, 1, BUFFER_SIZE, fpTargetFile);
-	}
 	fwrite(cstr, 1, new_row.length(), fpTargetFile);
-	if (last_buffer == BUFFER_SIZE){
+	if (last_buffer == BUFFER_SIZE)
 		fwrite(&buffer, 1, BUFFER_SIZE, fpTargetFile);
-	}
 	while( fread(&buffer, 1, BUFFER_SIZE, fpSourceFile) == BUFFER_SIZE)
 		fwrite(&buffer, 1, BUFFER_SIZE, fpTargetFile);
-
 	// Close The Files
 	fclose(fpSourceFile);
 	fclose(fpTargetFile);
 	remove(table_file.c_str());
 	rename(temp_file.c_str(), table_file.c_str());
-
 	//anadir a la estructura
 	create_index(table_file);
 	string tb_idx_age = "idx_age_" + table_file;
-	string tb_idx_name = "idx_name_" + table_file;
-	myMap[0].clear();
+	string tb_idx_name = "idx_name_" + table_file; // tb_idx_id instead tb_idx_name
+	//possible solution for time inserting, deleting: just drop the vector for every key instead drop all the structure
+	myMap[0].clear(); 
 	myMap[1].clear();
 	a_ram(tb_idx_age, "edad");
     a_ram(tb_idx_name, "id");
 	
-
 };
 //DELETE FROM tb WHERE id = 8;
 void DBmanager::delete_rows(string table_file, string column, string value){
@@ -198,7 +203,6 @@ void DBmanager::delete_rows(string table_file, string column, string value){
 			else fwrite(&buffer, 1, BUFFER_SIZE, fpTargetFile);
 		}
 	}
-
 	fclose(fpSourceFile);
 	fclose(fpTargetFile);
 	remove(table_file.c_str());
@@ -222,7 +226,6 @@ void DBmanager::update(string table, string column, string new_value, string col
 };
 // =================   MAIN   ====================
 int main(int argc, char const *argv[]){
-
     std::chrono::duration<double> elapsed;
     DBmanager db;
     string input = "";
@@ -238,10 +241,18 @@ int main(int argc, char const *argv[]){
 
     return 0;
 };
+	//select_ts from data1M.txt where id=01000001
+    //select from data1M.txt where id=01000001
+    //delete from data1M.txt where id=01000001
+    //insert data1M.txt 00000000 alU00000000 apE00000000 99
+	
+	//insert data1M.txt 01000001 Perico00000 Palotes0000 99
 
-	//select_ts from data10.txt where id=00000000
-    //select from data10.txt where id=00000000
-    //delete from data10.txt where id=00000001
-    //insert data10.txt 00000021 alU00000000 apE00000000 99
+	// **************   2M   *******************************
+	//select_ts from est2M.txt where id=00000000
+    //select from est2M.txt where id=00000000
+    //delete from est2M.txt where id=00000001
+    //insert est2M.txt 01000001 alU00000000 apE00000000 99
+	//insert est2M.txt 01000001 Perico00000 Palotes0000 99
 
 //g++ -o3 -pthread sqlito.cpp -o e -std=c++17 -lntl -lgmp -lm -ggdb
